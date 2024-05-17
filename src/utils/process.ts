@@ -1,13 +1,18 @@
 import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
+import { OutputConsole } from '../components/outputConsole';
 
 export class Process {
     private ph: ChildProcess;
     private outputBuilder: string[] = [];
     private latch: EventEmitter = new EventEmitter();
+    private dwOutput: OutputConsole = new OutputConsole();
 
     constructor(cmd: string, pwd: string | null, log: boolean) {
-        const command = `/bin/bash -c "${cmd}"`;
+        // const command = `/bin/bash -c "${cmd}"`;
+        // Use shell = true instead
+
+        const command = cmd;
         const options: any = {};
 
         if (pwd) {
@@ -20,15 +25,26 @@ export class Process {
             ...process.env,
             PATH: `${pathValue}:${homeValue}/.dw-cli/tools/:${homeValue}/.dw-cli/bin/`
         };
+        options.shell = true;
 
-        this.ph = spawn(command, options);
+        // split command into an array
+        let commandArray: string[] = command.split(' ');
+        const rootCommand = commandArray[0];
+        commandArray.shift();
+
+        // Spawn the process
+        console.log(`Spawning process: ${command}`);
+        this.ph = spawn(rootCommand, commandArray, options);
+
+        // print the output
+        this.dwOutput.appendLine(`Spawning process on output console: ${command}`);
 
         if (this.ph.stdout) {
             this.ph.stdout.on('data', (data) => {
                 const text = data.toString();
                 this.outputBuilder.push(text);
                 if (log) {
-                    decodeAndPrintString(text);
+                    decodeAndPrintString(text, this.dwOutput);
                 }
             });
         }
@@ -38,7 +54,7 @@ export class Process {
                 const text = data.toString();
                 this.outputBuilder.push(text);
                 if (log) {
-                    decodeAndPrintString(text);
+                    decodeAndPrintString(text, this.dwOutput);
                 }
             });
         }
@@ -51,6 +67,8 @@ export class Process {
     start(p0: boolean) {
         // In Node.js, the process starts immediately upon spawn
         // but I want to start it here explicitly
+
+        // spawn(this.command, this.options)
     }
 
     async wait(): Promise<number> {
@@ -70,8 +88,9 @@ export class Process {
     }
 }
 
-function decodeAndPrintString(s: string) {
+function decodeAndPrintString(s: string, dwOutput: OutputConsole) {
     // Assuming a simple console log for demonstration purposes
+    dwOutput.appendLine(s);
     console.log(s);
 }
 

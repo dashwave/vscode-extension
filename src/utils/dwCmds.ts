@@ -51,7 +51,7 @@ export class DwCmds {
             // this.dwWindow.displayError("Dashwave has a major update, you need to update dependencies\n");
             const hyperlink = {
                 execute: (p: any) => { // Replace with the actual type
-                    installDW(this.pwd);
+                    // installDW(this.pwd, p);
                 }
             };
             // this.dwWindow.console.printHyperlink("Click here to update\n\n", hyperlink);

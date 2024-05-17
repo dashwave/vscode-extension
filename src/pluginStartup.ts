@@ -1,6 +1,8 @@
+import { OutputConsole } from "./components/outputConsole";
 import { DwCmds } from "./utils/dwCmds";
 import { Process } from "./utils/process";
 import fs from 'fs';
+import * as vscode from 'vscode';
 
 let PluginMode = "workspace";
 let PluginEnv = "";
@@ -8,9 +10,10 @@ let PluginEnv = "";
 export function installDW(pwd: string | null) {
     // dwWindow.displayOutput("🔨 Setting up plugin...\n\n", ConsoleViewContentType.NORMAL_OUTPUT);
 
+    console.log("🔨 Setting up plugin...\n\n")
     // Execute the script
     const process = new Process("curl -sSL https://cli.dashwave.io | bash", pwd, true);
-    process.start(false);
+    // process.start(false);
 
     new Promise<void>(async (resolve) => {
         const exitCode = await process.wait();
