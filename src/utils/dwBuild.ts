@@ -1,3 +1,4 @@
+import { OutputConsole } from '../components/outputConsole';
 import { DwCmds } from './dwCmds'; // Import the DwCmds function from the appropriate module
 class DwBuildConfig {
     clean: boolean;
@@ -24,8 +25,9 @@ class DwBuild {
     private openEmulator: boolean;
     private attachDebugger: boolean = false;
     private pwd: string | undefined;
+    private dwOutput: OutputConsole;
 
-    constructor(config: DwBuildConfig) {
+    constructor(config: DwBuildConfig, dwOutput: OutputConsole) {
         if (config.clean) {
             this.cmd += " --clean";
         }
@@ -43,11 +45,12 @@ class DwBuild {
 
         this.pwd = config.pwd ?? undefined;
         this.openEmulator = config.openEmulator;
+        this.dwOutput = dwOutput;
     }
 
     private execute() {
         // DashwaveWindow.displayInfo();
-        const buildCmd = new DwCmds(this.cmd, this.pwd ?? null, true); // Ensure that `this.pwd` is of type `string | null`
+        const buildCmd = new DwCmds(this.cmd, this.pwd ?? null, true, this.dwOutput); // Ensure that `this.pwd` is of type `string | null`
         buildCmd.executeBuild(this.pwd ?? null, this.openEmulator, this.attachDebugger); // Ensure that `this.pwd` is of type `string | null`
     }
 

@@ -34,4 +34,17 @@ export class OutputConsole {
     clear() {
         this.outputChannel.clear();
     }
+
+    displayOutput(message: string) {
+        this.outputChannel.appendLine(message);
+    }
+
+    displayInfo(message: string) {
+        this.outputChannel.appendLine(`[INFO]: ${message}`);
+    }
+
+    displayError(message: string) {
+        this.outputChannel.appendLine(`[ERROR]: ${message}`);
+    }
+
 }

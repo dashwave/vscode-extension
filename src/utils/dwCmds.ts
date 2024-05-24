@@ -1,16 +1,19 @@
 import { exec, ExecOptions } from 'child_process';
 import { Process } from './process';
 import { installDW } from '../pluginStartup';
+import { OutputConsole } from '../components/outputConsole';
 
 export class DwCmds {
     private cmd: string;
     private p: Process;
     private pwd: string | null;
+    private dwOutput: OutputConsole;
 
-    constructor(execCmd: string, wd: string | null, log: boolean = false) {
+    constructor(execCmd: string, wd: string | null, log: boolean = false, dwOutput: OutputConsole) {
         this.cmd = `dw ${execCmd} --plugin`;
         this.pwd = wd ?? null;
         this.p = new Process(this.cmd, this.pwd, log);
+        this.dwOutput = dwOutput;
     }
 
     private runCommand(command: string, cwd?: string, log: boolean = false): Promise<void> {
@@ -33,13 +36,14 @@ export class DwCmds {
         this.p.start(true);
         const exitCode = await this.p.wait();
         if (exitCode === 11) {
-            // DashwaveWindow.displayError('Dashwave has a major update, you need to update dependencies\n');
+            this.dwOutput.displayError('Dashwave has a major update, you need to update dependencies\n');
             const hyperlink = {
-                // onClick: (p: Project) => {
-                //     this.installDW(this.pwd);
-                // }
+                onClick: () => {
+                    installDW(this.pwd, this.dwOutput); // Include the dwOutput argument
+                }
             };
             // DashwaveWindow.console.printHyperlink('Click here to update\n\n', hyperlink);
+            this.dwOutput.displayOutput(`Click here to update\n\n {hyperlink}`);
         }
         return exitCode;
     }
@@ -48,10 +52,10 @@ export class DwCmds {
         this.p.start(true);
         const exitCode = await this.p.wait();
         if (exitCode === 11) {
-            // this.dwWindow.displayError("Dashwave has a major update, you need to update dependencies\n");
+            this.dwOutput.displayError("Dashwave has a major update, you need to update dependencies\n");
             const hyperlink = {
                 execute: (p: any) => { // Replace with the actual type
-                    // installDW(this.pwd, p);
+                    installDW(this.pwd, this.dwOutput);
                 }
             };
             // this.dwWindow.console.printHyperlink("Click here to update\n\n", hyperlink);
