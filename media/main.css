@@ -1,0 +1,62 @@
+.action-div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.action-text {
+    align-self: self-start;
+    font-size: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+.action-btn {
+    color: white;
+    background-color: #0E639C;
+    font-size: 0.8rem;
+    width: 100%;
+    padding: 0.5rem 2rem;
+    border: none;
+    box-shadow: none;
+}
+
+.action-btn:hover{
+    cursor: pointer;
+}
+
+.config-div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.config-text {
+    align-self: self-start;
+    font-size: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.config-select {
+    width: 100%;
+    background-color:#3C3C3C;
+    color:#F0F0F0;
+    border-radius: 5px;
+    border: 1px;
+    border-color: #3C3C3C;
+    padding: 0.125rem 0.5rem;
+}
+
+.help-div{
+    margin-top: 0.25rem;
+}
+
+.help-div a{
+    color:#F0F0F0;
+    text-decoration: none;
+    font-size: 0.75rem;
+}
+
+.help-div a:hover{
+    cursor: pointer;
+}

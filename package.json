@@ -1,29 +1,39 @@
 {
-    "name": "dashwave",
-    "displayName": "Dashwave",
+    "name": "dashwave-cloud-build",
+    "displayName": "Dashwave Cloud Build",
     "icon": "assets/icon.png",
-    "description": "VS Code extention for Dashwave cloud and workspaces",
+    "description": "Build and debug your cloud applications with Dashwave Cloud Build.",
     "version": "0.0.1",
+    "publisher": "dashwave",
     "engines": {
         "vscode": "^1.86.0"
     },
     "categories": [
         "Other"
     ],
-    "activationEvents": [],
+    "activationEvents": [
+    ],
     "main": "./dist/extension.js",
     "contributes": {
         "commands": [
             {
-                "command": "extension.runCliCommand",
-                "title": "Run CLI Command"
+                "command": "extension.runDashwaveBuild",
+                "title": "Run Dashwave Build"
+            },
+            {
+                "command": "extension.buildAndEmulate",
+                "title": "Build and Emulate"
+            },
+            {
+                "command": "extension.debug",
+                "title": "Debug"
             }
         ],
         "viewsContainers": {
             "activitybar": [
                 {
                     "id": "dashwaveViewContainer",
-                    "title": "Dashwave",
+                    "title": "Dashwave Cloud Build",
                     "icon": "src/assets/icon.png"
                 }
             ]
@@ -31,16 +41,19 @@
         "views": {
             "dashwaveViewContainer": [
                 {
-                    "id": "dashwaveView",
-                    "name": "Dashwave List"
-                }
-            ]
-        },
-        "menus": {
-            "view/title": [
+                    "id": "dashwaveBuildOptsView",
+                    "type": "webview",
+                    "name": "Build Options"
+                },
                 {
-                    "command": "extension.runCliCommand",
-                    "when": "view == dashwaveView"
+                    "id": "dashwaveConfigurationView",
+                    "type": "webview",
+                    "name": "Configurations"
+                },
+                {
+                    "id": "dashwaveHelpView",
+                    "type": "webview",
+                    "name": "Help and Feedback"
                 }
             ]
         }
