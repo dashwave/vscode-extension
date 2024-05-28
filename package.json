@@ -41,19 +41,28 @@
         "views": {
             "dashwaveViewContainer": [
                 {
+                    "id": "dashwaveCreateProjectView",
+                    "type": "webview",
+                    "name": "Create Project",
+                    "when": "!dashwave:projectConnected"
+                },
+                {
                     "id": "dashwaveBuildOptsView",
                     "type": "webview",
-                    "name": "Build Options"
+                    "name": "Build Options",
+                    "when": "dashwave:projectConnected"
                 },
                 {
                     "id": "dashwaveConfigurationView",
                     "type": "webview",
-                    "name": "Configurations"
+                    "name": "Configurations",
+                    "when": "dashwave:projectConnected"
                 },
                 {
                     "id": "dashwaveHelpView",
                     "type": "webview",
-                    "name": "Help and Feedback"
+                    "name": "Help and Feedback",
+                    "when": "dashwave:projectConnected"
                 }
             ]
         }

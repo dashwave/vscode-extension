@@ -4,28 +4,76 @@ import * as vscode from 'vscode';
 import { installDW } from './pluginStartup';
 import { OutputConsole } from './components/outputConsole';
 import { visit } from 'jsonc-parser';
+import { create } from 'domain';
 const { exec } = require('child_process');
 
 
 var selectedModule:string = "", selectedVariant : string = "";
-var availableModules:string[] = [], availableVariants : string[] = [];
+var availableModules:string[], availableVariants : string[];
 var projectConnected :boolean = false;
+var configView:DashwaveView;
 
 export function activate(context: vscode.ExtensionContext) {
+  let disposable = vscode.commands.registerCommand('dashwave.createProject', () => {
+    const createProjectPanel = vscode.window.createWebviewPanel(
+        'createNewProject',
+        "Dashwave",
+        vscode.ViewColumn.One,
+        {
+            enableScripts: true,
+            localResourceRoots:[
+                context.extensionUri,
+            ]
+        }
+      );
+      createProjectPanel.webview.html = getCreateProjectWebViewHTML(context.extensionUri, createProjectPanel.webview);
+      createProjectPanel.webview.onDidReceiveMessage(async message => {
+        switch(message.command){
+            case "createProject":
+                const projectData = message.projectData;
+                console.log(projectData);
+                // Create a new project
+                setProjectConnected();
+                createProjectPanel.dispose();
+                break;
+            default:
+                vscode.window.showErrorMessage('Invalid message received from create project view');
+        }
+      });
+  });
+
+
   const buildView = new DashwaveView("build",context.extensionUri);
-  const configView = new DashwaveView("config", context.extensionUri);
+  configView = new DashwaveView("config", context.extensionUri);
   const helpView = new DashwaveView("help", context.extensionUri);
+  const createProjectView = new DashwaveView("createProject", context.extensionUri);
 
   vscode.window.registerWebviewViewProvider("dashwaveBuildOptsView", buildView);
   vscode.window.registerWebviewViewProvider("dashwaveConfigurationView", configView);
   vscode.window.registerWebviewViewProvider("dashwaveHelpView", helpView);
+  vscode.window.registerWebviewViewProvider("dashwaveCreateProjectView", createProjectView);
 
-  // updates the available modules and variants in the configuration view
-  setTimeout(()=>{
-    configView.setAvailableVariants(availableVariants);
-    configView.setAvailableModules(availableModules);
-  }, 2000);
+  context.subscriptions.push(disposable);
+}
 
+function setProjectConnected(){
+    projectConnected = true;
+    vscode.commands.executeCommand('setContext', 'dashwave:projectConnected', true);
+}
+
+function setProjectDisconnected(){
+    projectConnected = false;
+    vscode.commands.executeCommand('setContext', 'dashwave:projectConnected', false);
+}
+
+function setVariants(variants:string[]){
+    availableVariants = variants;
+    configView.setAvailableVariants(variants);
+}
+
+function setModules(modules:string[]){
+    availableModules = modules;
+    configView.setAvailableModules(modules);
 }
 
 class DashwaveView implements vscode.WebviewViewProvider {
@@ -95,6 +143,17 @@ class DashwaveView implements vscode.WebviewViewProvider {
                     }
                 });
                 break;
+            case "createProject":
+                webviewView.webview.onDidReceiveMessage(async message => {
+                    switch(message.command){
+                        case "createProjectModalOpen":
+                            vscode.commands.executeCommand('dashwave.createProject');                            
+                            break;
+                        default:
+                            vscode.window.showErrorMessage('Invalid message received from create project view');
+                    }
+                });
+                break;
         }
     }
 
@@ -114,7 +173,6 @@ class DashwaveView implements vscode.WebviewViewProvider {
 		const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', `${this._viewType}.js`));
 
 		// Do the same for the stylesheet.
-		const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css'));
 		const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.css'));
 
 		// Use a nonce to only allow a specific script to be run.
@@ -126,7 +184,6 @@ class DashwaveView implements vscode.WebviewViewProvider {
                     <head>
                         <meta charset="UTF-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <link href="${styleVSCodeUri}" rel="stylesheet">
                         <link href="${styleMainUri}" rel="stylesheet">
                         <title>Dashwave Build Opts</title>
                     </head>
@@ -152,21 +209,39 @@ class DashwaveView implements vscode.WebviewViewProvider {
                     <head>
                         <meta charset="UTF-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <link href="${styleVSCodeUri}" rel="stylesheet">
                         <link href="${styleMainUri}" rel="stylesheet">
                         <title>Configuration Opts</title>
                     </head>
                     <body>
                         <div class="config-div">
                             <div class="config-text">Module</div>
-                                <select class="config-select" name="module" id="module-selector">
+                                <select class="config-select" name="module" id="module-selector" disabled>
+                                '<option value="" selected>Not available yet</option>'
                                 </select>
                             </div>
                             <div class="config-div">
                                 <div class="config-text">Variant</div>
-                                <select class="config-select" name="variant" id="variant-selector">
+                                <select class="config-select" name="variant" id="variant-selector" disabled>
+                                '<option value="" selected>Not available yet</option>'
                                 </select>
                             </div>
+                        </div>
+                        <script src="${scriptUri}"></script>
+                    </body>
+                    </html>`;
+            case "createProject":
+                return `<!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <link href="${styleMainUri}" rel="stylesheet">
+                        <title>Create Project</title>
+                    </head>
+                    <body>
+                        <div class="action-div">
+                            <div class="action-text">Create a new project on Dashwave</div>
+                            <button class="action-btn" id="create-project">Create Project</button>
                         </div>
                         <script src="${scriptUri}"></script>
                     </body>
@@ -177,7 +252,6 @@ class DashwaveView implements vscode.WebviewViewProvider {
                     <head>
                         <meta charset="UTF-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <link href="${styleVSCodeUri}" rel="stylesheet">
                         <link href="${styleMainUri}" rel="stylesheet">
                         <title>Help and Feedback</title>
                     </head>
@@ -191,3 +265,49 @@ class DashwaveView implements vscode.WebviewViewProvider {
         }
 	}
 }
+
+function getCreateProjectWebViewHTML(extensionUri: vscode.Uri, webview: vscode.Webview){
+    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', `createProjectDialog.js`));
+	const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'main.css'));
+    return `<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="${styleMainUri}" rel="stylesheet">
+        <title>Create Project</title>
+    </head>
+        <body id="create-project-dialog">
+            <div class="create-project-container">
+                <h1 class="create-project-title">New Dashwave Project</h1>
+                <p class="create-project-subtitle">Create a new project on dashwave to get started</p>
+                <form class="create-project-form" id="create-project-form">
+                    <div class="create-project-form-group">
+                        <label for="project-name">Project name*</label>
+                        <input type="text" id="project-name" class="create-project-form-control" placeholder="Type here" required>
+                    </div>
+                    <div class="create-project-form-group">
+                        <label for="root-module-path">Root module path*</label>
+                        <input type="text" id="root-module-path" class="create-project-form-control" value="./" required>
+                    </div>
+                    <div class="create-project-form-group">
+                        <label>Project Type*</label>
+                        <div class="create-project-radio-group">
+                            <label>
+                                <input type="radio" name="project-type" value="native" required> Native (Java/Kotlin)
+                            </label>
+                            <label>
+                                <input type="radio" name="project-type" value="rnative"> RNative
+                            </label>
+                            <label>
+                                <input type="radio" name="project-type" value="flutter"> Flutter
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit" class="create-project-btn-submit">Create</button>
+                </form>
+            </div>
+            <script src="${scriptUri}"></script>
+        </body>
+        </html>`;
+    }
