@@ -5,26 +5,37 @@ import fs from 'fs';
 import * as vscode from 'vscode';
 import { Messages } from "./messages/messages"; // Import the Messages module
 import { parse } from 'jsonc-parser';
+import { exit } from "process";
+import { enableBuild, setModules, setProjectConnected, setVariants } from "./extension";
 
-let PluginMode = "workspace";
+let PluginMode = "";
 let PluginEnv = "";
 
-async function checkDW(project: any, dwOutput: OutputConsole) {
-    const dwCmd = new DwCmds("check-update", project.basePath, true, dwOutput);
+export type StringArrayMap = {
+    [key: string]: string[];
+};
+
+export async function checkDW(projectRoot: string, dwOutput: OutputConsole) {
+    const dwCmd = new DwCmds("check-update", projectRoot, true, dwOutput);
     const exitCode = await dwCmd.executeWithExitCode();
     if (exitCode === 0) {
-        dwOutput.displayInfo(Messages.DW_INSTALLED_ALREADY);
-        verifyLogin(project?.basePath, dwOutput);
+        dwOutput.displayOutput(Messages.DW_INSTALLED_ALREADY);
+        verifyLogin(projectRoot, dwOutput);
     } else if (exitCode === 11) {
         // Handle specific case for exit code 11 if needed
     } else {
         dwOutput.displayError(Messages.DW_NOT_INSTALLED);
-        showInstallDW(project);
-        installDW(project?.basePath, dwOutput);
+        showInstallDW(projectRoot, dwOutput);
+        installDW(projectRoot, dwOutput);
     }
 }
 
-function showInstallDW(project: any) {
+function showInstallDW(projectRoot: string, dwOutput:OutputConsole) {
+    vscode.window.showInformationMessage("Dashwave Plugin Not Configured", "Install and Configure").then((selection) => {
+        if (selection === "Install and Configure") {
+            installDW(projectRoot, dwOutput);
+        }
+    });
     // const notificationGroup = NotificationGroup.balloonGroup("YourPluginNotificationGroup");
     // const notification = notificationGroup.createNotification(
     //     "Dashwave Plugin Not Configured",
@@ -36,12 +47,11 @@ function showInstallDW(project: any) {
 }
 
 
-export function installDW(pwd: string | null, dwOutput: OutputConsole) {
+export function installDW(projectRoot:string, dwOutput: OutputConsole) {
     dwOutput.displayOutput("🔨 Setting up plugin...\n\n");
 
-    console.log("🔨 Setting up plugin...\n\n")
     // Execute the script
-    const process = new Process("curl -sSL https://cli.dashwave.io | bash", pwd, true);
+    const process = new Process("curl -sSL https://cli.dashwave.io | bash", projectRoot, true, dwOutput);
 
     new Promise<void>(async (resolve) => {
         const exitCode = await process.wait();
@@ -49,7 +59,7 @@ export function installDW(pwd: string | null, dwOutput: OutputConsole) {
             dwOutput.displayInfo(Messages.DW_DEPS_INSTALL_SUCCESS);
             dwOutput.displayInfo(Messages.DW_DEPS_CONFIGURING);
 
-            const configCmd = new DwCmds("config", pwd, true, dwOutput);
+            const configCmd = new DwCmds("config", projectRoot, true, dwOutput);
             const exitcode = await configCmd.executeWithExitCode();
             if (exitcode === 0) {
                 if (PluginMode === "workspace") {
@@ -58,10 +68,10 @@ export function installDW(pwd: string | null, dwOutput: OutputConsole) {
                     if (PluginEnv !== "") {
                         workspaceCmd += ` -e ${PluginEnv}`;
                     }
-                    const setupWorkspaceCmd = new DwCmds(workspaceCmd, pwd, true, dwOutput);
+                    const setupWorkspaceCmd = new DwCmds(workspaceCmd, projectRoot, true, dwOutput);
                     const exitCode = await setupWorkspaceCmd.executeWithExitCode();
                     if (exitCode === 0) {
-                        verifyLogin(pwd, dwOutput);
+                        verifyLogin(projectRoot, dwOutput);
                     } else {
                         dwOutput.displayError("❌ Could not setup plugin. Please contact us at hello@dashwave.io");
                     }
@@ -70,7 +80,7 @@ export function installDW(pwd: string | null, dwOutput: OutputConsole) {
                 }
 
                 dwOutput.displayInfo(Messages.DW_DEPS_CONFIGURE_SUCCESS);
-                verifyLogin(pwd, dwOutput);
+                verifyLogin(projectRoot, dwOutput);
             } else {
                 dwOutput.displayError(Messages.DW_DEPS_CONFIGURE_FAILED);
             }
@@ -81,14 +91,15 @@ export function installDW(pwd: string | null, dwOutput: OutputConsole) {
     });
 }
 
-async function verifyLogin(pwd: string | null, dwOutput: OutputConsole) {
+async function verifyLogin(pwd: string, dwOutput: OutputConsole) {
     listUsers(pwd, dwOutput);
     // dwOutput.addModulesAndVariants(new Map<string, string[]>(), "", "");
     const currentUserLoginCmd = new DwCmds("user", pwd, true, dwOutput);
     const exitCode = await currentUserLoginCmd.executeWithExitCode();
     if (exitCode === 0) {
         // dwWindow.enableRunButton();
-        // checkProjectConnected(pwd, dwWindow);
+        vscode.commands.executeCommand('setContext', 'dashwave:userLoggedIn', true);
+        checkProjectConnected(pwd, dwOutput);
     } else {
         if (PluginMode === "workspace") {
             dwOutput.displayError("❌ User is not setup correctly. Please contact us at hello@dashwave.io");
@@ -98,14 +109,15 @@ async function verifyLogin(pwd: string | null, dwOutput: OutputConsole) {
     }
 }
 
-function checkProjectConnected(pwd: string | null, dwOutput: OutputConsole) {
-    listUsers(pwd, dwOutput);
-    const gitConfigFilepath = `${pwd}/.git`;
+function checkProjectConnected(projectRoot:string, dwOutput: OutputConsole) {
+    listUsers(projectRoot, dwOutput);
+    const gitConfigFilepath = `${projectRoot}/.git`;
     if (!doesFileExist(gitConfigFilepath)) {
         if (PluginMode === "workspace") {
             dwOutput.displayError("❌ There is some issue in setting up your project (.git doesn't exist), please contact us at hello@dashwave.io");
             return;
         }
+        vscode.window.showErrorMessage("Could not find .git folder");
         dwOutput.displayOutput(`❌ ${Messages.GIT_NOT_CONFIGURED}`);
         // const notif = new BalloonNotif(
         //     "Could not find .git folder",
@@ -121,12 +133,13 @@ function checkProjectConnected(pwd: string | null, dwOutput: OutputConsole) {
         return;
     }
 
-    if (doesFileExist(`${pwd}/dashwave.yml`)) {
+    if (doesFileExist(`${projectRoot}/dashwave.yml`)) {
         // dwWindow.enableRunButton();
-        listModulesAndVariants(pwd, dwOutput);
+        listModulesAndVariants(projectRoot, dwOutput);
         dwOutput.displayOutput("✅ Project is successfully connected to dashwave. Run a cloud build using dashwave icon on toolbar\n\n");
-        // const dd = new ReadyForBuildDialog();
-        // dd.show();
+        vscode.window.showInformationMessage("Project is successfully connected to dashwave. Run a cloud build using dashwave extension");
+        setProjectConnected();
+        enableBuild();
     } else {
         if (PluginMode === "workspace") {
             dwOutput.displayError("❌ There is some issue in setting up your project (dashwave.yml doesn't exist), please contact us at hello@dashwave.io");
@@ -137,11 +150,24 @@ function checkProjectConnected(pwd: string | null, dwOutput: OutputConsole) {
     }
 }
 
-async function loginUser(pwd: string | null, dwOutput: OutputConsole) {
+export async function loginUser(pwd: string, dwOutput: OutputConsole) {
     // const loginDialog = new LoginDialog();
-    let accessCode: string = "";
 
     // loginDialog.show();
+    vscode.window.showInformationMessage(
+        "Find your access code [here](https://console.dashwave.io/home?profile=true)",
+    );
+    const accessCode = await vscode.window.showInputBox({
+        title: "Dashwave Login",
+        prompt: `Enter Dashwave Access Code. You can find your access code [here](https://console.dashwave.io/home?profile=true)`,
+        placeHolder: 'Access Code',
+
+    });
+    if (accessCode === undefined || accessCode === "") {
+        vscode.window.showErrorMessage("Access code is required to login");
+        dwOutput.displayError("❌ Access code is required to login");
+        return;
+    }
 
     // if (loginDialog.exitCode === DialogWrapper.OK_EXIT_CODE) {
     //     accessCode = loginDialog.getAccessCode();
@@ -156,9 +182,12 @@ async function loginUser(pwd: string | null, dwOutput: OutputConsole) {
     }
     const exitCode = await new DwCmds(loginUserCmd, pwd, true, dwOutput).executeWithExitCode();
     if (exitCode === 0) {
+        vscode.window.showInformationMessage("Successfully logged in to Dashwave");
+        vscode.commands.executeCommand('setContext', 'dashwave:userLoggedIn', true);
         // dwWindow.enableRunButton();
         // checkProjectConnected(pwd, dwOutput);
     } else {
+        vscode.window.showErrorMessage("Could not login to Dashwave");
         // const hyperlink = new HyperlinkInfo((p: Project) => {
         //     loginUser(pwd);
         // });
@@ -170,7 +199,7 @@ function doesFileExist(filePath: string): boolean {
     return fs.existsSync(filePath);
 }
 
-async function listUsers(pwd: string | null, dwOutput: OutputConsole) {
+async function listUsers(pwd: string, dwOutput: OutputConsole) {
     const usersCmd = new DwCmds("user ls", pwd, false, dwOutput);
     const cmdOutput: [number, string] = await usersCmd.executeWithOutput();
     if (cmdOutput[0] !== 0) {
@@ -188,7 +217,7 @@ async function listUsers(pwd: string | null, dwOutput: OutputConsole) {
     // dwWindow.addUsers(users, activeUser, pwd);
 }
 
-async function listModulesAndVariants(pwd: string | null, dwOutput: OutputConsole) {
+async function listModulesAndVariants(pwd: string, dwOutput: OutputConsole) {
     const configsCmd = new DwCmds("build configs", pwd, false, dwOutput);
     const cmdOutput = await configsCmd.executeWithOutput();
     if (cmdOutput[0] !== 0) {
@@ -196,37 +225,34 @@ async function listModulesAndVariants(pwd: string | null, dwOutput: OutputConsol
         return;
     }
     const jsonText = cmdOutput[1].trim();
-    const cleanedJsonString = jsonText.replace(/^\s+/, '');
-    const jsonObject = parse(cleanedJsonString);
-    const map: { [key: string]: string[] } = {};
-    let defaultModule = "";
-    let defaultVariant = "";
-    let foundDefault = false;
-
-    for (const [key, value] of Object.entries(jsonObject)) {
-        const list = value instanceof Array ? value.map(String) : [];
-        if (key === "default") {
-            if (list.length >= 2) {
-                defaultModule = list[0];
-                defaultVariant = list[1];
-                foundDefault = true;
-            } else {
-                console.log("Warning: 'default' project does not contain enough build types.");
-            }
-        }
-        map[key] = list;
+    const object = parse(jsonText);
+    const modules: string[] = [];
+    let variants: StringArrayMap = {};
+    for (const module in object){
+        modules.push(module);
+        const variant = object[module];
+        variants[module] = variant;
     }
-
-    if (!foundDefault && Object.keys(map).length > 0) {
-        const firstEntry = Object.entries(map)[0];
-        defaultModule = firstEntry[0];
-        defaultVariant = firstEntry[1][0] || "";
-    }
-
-    // dwOutput.addModulesAndVariants(map, defaultModule, defaultVariant);
+    setVariants(variants);
+    setModules(modules);
 }
 
-
+export async function createProject(pwd:string,projectName:string,devStack:string, rootDir:string, dwOutput:OutputConsole){
+    const createProjectCmd = `create-project --no-prompt --name=${projectName} --dev-stack=${devStack} --root-dir=${rootDir}`;
+    const cmd = new DwCmds(createProjectCmd, pwd, true, dwOutput);
+    const exitCode = await cmd.executeWithExitCode();
+    if (exitCode === 0) {
+        dwOutput.displayInfo(Messages.DW_PROJECT_CREATE_SUCCESS);
+        vscode.window.showInformationMessage("Project created successfully. You can run builds now.");
+        checkProjectConnected(pwd, dwOutput);
+    } else if (exitCode === 13){
+        vscode.commands.executeCommand('setContext', 'dashwave:userLoggedIn', true);
+        vscode.window.showErrorMessage("Please login again")
+    }else{
+        dwOutput.displayError(Messages.DW_PROJECT_CREATE_FAILED);
+        vscode.window.showErrorMessage("Project creation failed. Please try again")
+    }
+}
 
 
 

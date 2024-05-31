@@ -1,31 +1,33 @@
 import { OutputConsole } from '../components/outputConsole';
+import * as vscode from 'vscode';
 import { DwCmds } from './dwCmds'; // Import the DwCmds function from the appropriate module
-class DwBuildConfig {
+export class DwBuildConfig {
     clean: boolean;
     debug: boolean;
     openEmulator: boolean;
-    pwd: string | null;
+    pwd: string;
     module: string;
     variant: string;
     attachDebugger: boolean;
 
-    constructor(clean: boolean, debug: boolean, openEmulator: boolean, module: string, variant: string, pwd: string | null) {
+    constructor(clean: boolean, debug: boolean, openEmulator: boolean, module: string, variant: string, attachDebugger: boolean, pwd: string) {
         this.clean = clean;
         this.debug = debug;
         this.openEmulator = openEmulator;
         this.pwd = pwd;
         this.module = module;
         this.variant = variant;
-        this.attachDebugger = false;
+        this.attachDebugger = attachDebugger;
     }
 }
 
-class DwBuild {
+export class DwBuild {
     private cmd: string = "plugin-build";
     private openEmulator: boolean;
     private attachDebugger: boolean = false;
-    private pwd: string | undefined;
+    private pwd: string;
     private dwOutput: OutputConsole;
+    private dwcmd: DwCmds|null = null;
 
     constructor(config: DwBuildConfig, dwOutput: OutputConsole) {
         if (config.clean) {
@@ -42,16 +44,35 @@ class DwBuild {
         if (config.variant !== "") {
             this.cmd += ` --variant ${config.variant}`;
         }
+        if (config.attachDebugger) {
+            this.cmd += " --attach-debugger";
+        }
 
-        this.pwd = config.pwd ?? undefined;
+        this.pwd = config.pwd;
         this.openEmulator = config.openEmulator;
         this.dwOutput = dwOutput;
+        this.attachDebugger = config.attachDebugger;
     }
 
-    private execute() {
+    public async execute(progress: vscode.Progress<{ message?: string, increment?: number }>, token: vscode.CancellationToken) {
         // DashwaveWindow.displayInfo();
-        const buildCmd = new DwCmds(this.cmd, this.pwd ?? null, true, this.dwOutput); // Ensure that `this.pwd` is of type `string | null`
-        buildCmd.executeBuild(this.pwd ?? null, this.openEmulator, this.attachDebugger); // Ensure that `this.pwd` is of type `string | null`
+        const buildCmd = new DwCmds(this.cmd, this.pwd, true, this.dwOutput); // Ensure that `this.pwd` is of type `string | null`
+        this.dwcmd = buildCmd;
+        await buildCmd.executeBuild(this.pwd ?? null, this.openEmulator, this.attachDebugger); // Ensure that `this.pwd` is of type `string | null`
+    }
+
+    public async cancel() {
+        this.dwcmd?.exit();
+        const cancelCmd = new DwCmds("stop-build", this.pwd, true, this.dwOutput);
+        cancelCmd.executeWithExitCode().then((ex) => {
+            if (ex === 0) {
+                this.dwOutput.displayOutput("Build cancelled successfully");
+                vscode.window.showInformationMessage("Build cancelled successfully");
+            } else {
+                this.dwOutput.displayError("Failed to cancel the build");
+                vscode.window.showErrorMessage("Failed to cancel the build");
+            }
+        });
     }
 
     // run(p: Project) {

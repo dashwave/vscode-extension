@@ -10,4 +10,6 @@ export const Messages = {
     PROJECT_CONNECTION_SUCCESS: "✅ Project is successfully connected to dashwave\n\n",
     PROJECT_CONNECTION_FAILED: "❌ Dashwave project creation failed\n",
     GIT_NOT_CONFIGURED: "Your local codebase is not currently hosted on a Git repository (GitHub/GitLab). Please ensure your codebase is hosted on Git to use this plugin.\n",
+    DW_PROJECT_CREATE_SUCCESS: "Your project is successfully connected to dashwave. Run DW Build",
+    DW_PROJECT_CREATE_FAILED: "Dashwave project creation failed\n",
 };

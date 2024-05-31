@@ -10,8 +10,8 @@ document.getElementById('create-project-form').addEventListener('submit', (e) =>
     // Create a project data object
     const projectData = {
         projectName: projectName,
-        rootModulePath: rootModulePath,
-        projectType: projectType
+        rootDir: rootModulePath,
+        devStack: projectType
     };
 
     // Send the project data to the VSCode extension

@@ -6,9 +6,9 @@ export class Process {
     private ph: ChildProcess;
     private outputBuilder: string[] = [];
     private latch: EventEmitter = new EventEmitter();
-    private dwOutput: OutputConsole = new OutputConsole();
+    private dwOutput: OutputConsole;
 
-    constructor(cmd: string, pwd: string | null, log: boolean) {
+    constructor(cmd: string, pwd: string | null, log: boolean, dwOutput: OutputConsole) {
         // const command = `/bin/bash -c "${cmd}"`;
         // Use shell = true instead
 
@@ -18,6 +18,8 @@ export class Process {
         if (pwd) {
             options.cwd = pwd;
         }
+
+        this.dwOutput = dwOutput;
 
         const homeValue = process.env.HOME;
         const pathValue = process.env.PATH;
@@ -35,9 +37,6 @@ export class Process {
         // Spawn the process
         console.log(`Spawning process: ${command}`);
         this.ph = spawn(rootCommand, commandArray, options);
-
-        // print the output
-        this.dwOutput.appendLine(`Spawning process on output console: ${command}`);
 
         if (this.ph.stdout) {
             this.ph.stdout.on('data', (data) => {

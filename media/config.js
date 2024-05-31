@@ -19,7 +19,7 @@ document.getElementById('module-selector').addEventListener('change', (event) =>
     const select = document.getElementById(elementID);
     if(states.length > 0){
         select.disabled = false;
-        select.innerHTML = states.map(state => 
+        select.innerHTML = `<option value="" disabled selected>Select a value</option>` + states.map(state => 
             `<option value="${state.toLowerCase()}">${state}</option>`
         ).join('');
     }else{

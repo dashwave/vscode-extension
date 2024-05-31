@@ -1,12 +1,16 @@
 {
     "name": "dashwave-cloud-build",
     "displayName": "Dashwave Cloud Build",
-    "icon": "assets/icon.png",
+    "icon": "src/assets/icon.png",
     "description": "Build and debug your cloud applications with Dashwave Cloud Build.",
     "version": "0.0.1",
     "publisher": "dashwave",
     "engines": {
         "vscode": "^1.86.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/dashwave/vscode-extension"
     },
     "categories": [
         "Other"
@@ -41,28 +45,34 @@
         "views": {
             "dashwaveViewContainer": [
                 {
+                    "id": "dashwaveLoginView",
+                    "type": "webview",
+                    "name": "Login User",
+                    "when": "!dashwave:userLoggedIn"
+                },
+                {
                     "id": "dashwaveCreateProjectView",
                     "type": "webview",
                     "name": "Create Project",
-                    "when": "!dashwave:projectConnected"
+                    "when": "dashwave:userLoggedIn && !dashwave:projectConnected"
                 },
                 {
                     "id": "dashwaveBuildOptsView",
                     "type": "webview",
                     "name": "Build Options",
-                    "when": "dashwave:projectConnected"
+                    "when": "dashwave:userLoggedIn && dashwave:projectConnected"
                 },
                 {
                     "id": "dashwaveConfigurationView",
                     "type": "webview",
                     "name": "Configurations",
-                    "when": "dashwave:projectConnected"
+                    "when": "dashwave:userLoggedIn && dashwave:projectConnected"
                 },
                 {
                     "id": "dashwaveHelpView",
                     "type": "webview",
                     "name": "Help and Feedback",
-                    "when": "dashwave:projectConnected"
+                    "when": "dashwave:userLoggedIn && dashwave:projectConnected"
                 }
             ]
         }
@@ -76,7 +86,8 @@
         "watch-tests": "tsc -p . -w --outDir out",
         "pretest": "yarn run compile-tests && yarn run compile && yarn run lint",
         "lint": "eslint src --ext ts",
-        "test": "vscode-test"
+        "test": "vscode-test",
+        "build": "vsce package"
     },
     "devDependencies": {
         "@types/mocha": "^10.0.6",

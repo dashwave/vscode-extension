@@ -20,9 +20,14 @@
     box-shadow: none;
 }
 
-.action-btn:hover{
+.action-btn:enabled:hover{
     background-color: #0E639C;
     cursor: pointer;
+}
+
+.action-btn:disabled{
+    background-color: #3C3C3C;
+    cursor: not-allowed;
 }
 
 .config-div {
