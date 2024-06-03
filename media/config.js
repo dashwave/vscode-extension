@@ -31,7 +31,6 @@ document.getElementById('module-selector').addEventListener('change', (event) =>
 // Listen for messages from the extension to update the select options
 window.addEventListener('message', event => {
     const message = event.data;
-    console.log('Received message from extension:', message);
     switch (message.command) {
         case 'setAvailableModules':
             updateSelectOptions("module-selector",message.list);

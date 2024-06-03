@@ -3,7 +3,7 @@
     "displayName": "Dashwave Cloud Build",
     "icon": "src/assets/icon.png",
     "description": "Build and debug your cloud applications with Dashwave Cloud Build.",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "publisher": "dashwave",
     "engines": {
         "vscode": "^1.86.0"
@@ -19,6 +19,22 @@
     ],
     "main": "./dist/extension.js",
     "contributes": {
+        "configuration":{
+            "type": "object",
+            "title": "Dashwave Cloud Build Settings",
+            "properties": {
+                "dashwave.pluginEnv":{
+                    "type": "string",
+                    "default": "",
+                    "description": "The environment to use for the plugin"
+                },
+                "dashwave.pluginMode":{
+                    "type": "string",
+                    "default": "",
+                    "description": "The mode to use for the plugin"
+                }
+            }
+        },
         "commands": [
             {
                 "command": "extension.runDashwaveBuild",
@@ -57,6 +73,12 @@
                     "when": "dashwave:userLoggedIn && !dashwave:projectConnected"
                 },
                 {
+                    "id": "dashwaveBuildActionsView",
+                    "type": "webview",
+                    "name": "Build Actions",
+                    "when": "dashwave:userLoggedIn && dashwave:projectConnected"
+                },
+                {
                     "id": "dashwaveBuildOptsView",
                     "type": "webview",
                     "name": "Build Options",
@@ -69,10 +91,15 @@
                     "when": "dashwave:userLoggedIn && dashwave:projectConnected"
                 },
                 {
+                    "id": "dashwaveUsersView",
+                    "type": "webview",
+                    "name": "Users",
+                    "when": "dashwave:userLoggedIn && dashwave:projectConnected"
+                },
+                {
                     "id": "dashwaveHelpView",
                     "type": "webview",
-                    "name": "Help and Feedback",
-                    "when": "dashwave:userLoggedIn && dashwave:projectConnected"
+                    "name": "Help and Feedback"
                 }
             ]
         }

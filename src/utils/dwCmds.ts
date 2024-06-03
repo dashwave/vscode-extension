@@ -19,16 +19,16 @@ export class DwCmds {
     private runCommand(command: string, cwd?: string, log: boolean = false): Promise<void> {
         const options: ExecOptions = {
             cwd: cwd,
-    };
+        };
 
-    return new Promise((resolve, reject) => {
-        exec(command, options, (error, stdout, stderr) => {
-            if (error) {
-            reject(error);
-            } else {
-            resolve();
-            }
-        });
+        return new Promise((resolve, reject) => {
+            exec(command, options, (error, stdout, stderr) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve();
+                }
+            });
         });
     }
 
@@ -73,19 +73,24 @@ export class DwCmds {
     }
 
     exit(): void {
-    // There is no direct way to exit a running process in TypeScript,
-    // but you can use the 'kill' method of the child process to terminate it.
+        // There is no direct way to exit a running process in TypeScript,
+        // but you can use the 'kill' method of the child process to terminate it.
         this.p.exit();
     }
 
-    executeBuild(pwd: string, openEmulator: boolean, attachDebugger: boolean): Promise<number> {
+    executeBuild(pwd: string, openEmulator: boolean, attachDebugger: boolean, progress: vscode.Progress<{
+        message?: string | undefined;
+        increment?: number | undefined;
+    }>): Promise<number> {
         this.dwOutput.displayOutput(this.cmd);
         this.p.start(true);
         // this.dwWindow.disableRunButton();
         // this.dwWindow.enableCancelButton();
         // this.dwWindow.currentBuild = this;
         // this.dwWindow.changeIcon(this.dwWindow.loadIcon);
-
+        setTimeout(() => {
+            progress.report({ message: "Build started, check the output console for more details..." });
+        }, 5000);
         return this.p.wait().then((ex) => {
             switch (ex) {
                 case 0:
@@ -104,6 +109,7 @@ export class DwCmds {
                     break;
                 case 14:
                     if (attachDebugger) {
+                        progress.report({ message: "Build completed. Starting debugger..." });
                         const debuggerCmd = new DwCmds("get-debugger", pwd, true, this.dwOutput);
                         debuggerCmd.executeBg();
                     }

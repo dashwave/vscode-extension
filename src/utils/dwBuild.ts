@@ -1,6 +1,7 @@
 import { OutputConsole } from '../components/outputConsole';
 import * as vscode from 'vscode';
 import { DwCmds } from './dwCmds'; // Import the DwCmds function from the appropriate module
+import { getPluginMode } from '../pluginStartup';
 export class DwBuildConfig {
     clean: boolean;
     debug: boolean;
@@ -47,6 +48,9 @@ export class DwBuild {
         if (config.attachDebugger) {
             this.cmd += " --attach-debugger";
         }
+        if (getPluginMode() === "workspace"){
+            this.cmd += " --workspace";
+        }
 
         this.pwd = config.pwd;
         this.openEmulator = config.openEmulator;
@@ -58,7 +62,7 @@ export class DwBuild {
         // DashwaveWindow.displayInfo();
         const buildCmd = new DwCmds(this.cmd, this.pwd, true, this.dwOutput); // Ensure that `this.pwd` is of type `string | null`
         this.dwcmd = buildCmd;
-        await buildCmd.executeBuild(this.pwd ?? null, this.openEmulator, this.attachDebugger); // Ensure that `this.pwd` is of type `string | null`
+        await buildCmd.executeBuild(this.pwd ?? null, this.openEmulator, this.attachDebugger, progress); // Ensure that `this.pwd` is of type `string | null`
     }
 
     public async cancel() {

@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { StringArrayMap, checkDW, createProject, installDW, loginUser } from './pluginStartup';
+import { StringArrayMap, checkDW, createProject, getPluginMode, installDW, loginUser, setPluginEnv, setPluginMode, switchUser } from './pluginStartup';
 import { OutputConsole } from './components/outputConsole';
 import { visit } from 'jsonc-parser';
 import { create } from 'domain';
@@ -13,9 +13,11 @@ var selectedModule:string = "", selectedVariant : string = "";
 var availableModules:string[], availableVariants : StringArrayMap;
 var projectConnected :boolean = false;
 var buildEnabled:boolean = false;
-var configView:DashwaveView, buildView:DashwaveView;
+var configView:DashwaveView, buildView:DashwaveView, usersView:DashwaveView;
 var outputChannel:OutputConsole;
 var projectRootDir:string = "";
+var availableUsers:string[] = [];
+var selectedUser:string = "";
 export async function activate(context: vscode.ExtensionContext) {
 
   outputChannel =  new OutputConsole();  
@@ -32,7 +34,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // check if user is logged in
   // check if dashwave.yml exists?
-  let disposable = vscode.commands.registerCommand('dashwave.createProject', () => {
+  vscode.commands.registerCommand('dashwave.createProject', () => {
     const createProjectPanel = vscode.window.createWebviewPanel(
         'createNewProject',
         "Dashwave",
@@ -64,15 +66,32 @@ export async function activate(context: vscode.ExtensionContext) {
   const helpView = new DashwaveView("help", context.extensionUri);
   configView = new DashwaveView("config", context.extensionUri);
   const loginView = new DashwaveView("login", context.extensionUri);
+  const buildOptsView = new DashwaveView("buildOpts", context.extensionUri);
+  usersView = new DashwaveView("users", context.extensionUri);
 
-  vscode.window.registerWebviewViewProvider("dashwaveBuildOptsView", buildView);
+  vscode.window.registerWebviewViewProvider("dashwaveBuildActionsView", buildView);
+  vscode.window.registerWebviewViewProvider("dashwaveBuildOptsView", buildOptsView);
   vscode.window.registerWebviewViewProvider("dashwaveConfigurationView", configView);
   vscode.window.registerWebviewViewProvider("dashwaveHelpView", helpView);
   vscode.window.registerWebviewViewProvider("dashwaveCreateProjectView", createProjectView);
   vscode.window.registerWebviewViewProvider("dashwaveLoginView", loginView);
-
+  vscode.window.registerWebviewViewProvider("dashwaveUsersView", usersView);
   vscode.commands.executeCommand('setContext', 'dashwave:userLoggedIn', false);
-  context.subscriptions.push(disposable);
+
+  loadConfiguration();
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration(event => {
+      if (event.affectsConfiguration('dashwave.pluginEnv') || event.affectsConfiguration('dashwave.pluginMode')){
+        loadConfiguration();  // Reload configuration settings
+      }
+    })
+  );
+}
+
+function loadConfiguration(){
+  const config = vscode.workspace.getConfiguration('dashwave');
+  setPluginMode(config.get<string>('pluginMode') || "");
+  setPluginEnv(config.get<string>('pluginEnv') || "");
 }
 
 export function setProjectConnected(){
@@ -104,6 +123,16 @@ export function disableBuild(){
     buildEnabled = false;
     vscode.commands.executeCommand('setContext', 'dashwave:buildEnabled', false);
     buildView.disableBuild();
+}
+
+export function setUsers(users:string[]){
+    availableUsers = users;
+    usersView.setUsers(users);
+}
+
+export function setSelectedUser(user:string){
+    selectedUser = user;
+    usersView.setSelectedUser(user);
 }
 class DashwaveView implements vscode.WebviewViewProvider {
 
@@ -162,6 +191,18 @@ class DashwaveView implements vscode.WebviewViewProvider {
                     }
                 });
                 break;
+            case "buildOpts":
+                webviewView.webview.onDidReceiveMessage(async message => {
+                    switch(message.command){
+                        case "updateBuildOpts":
+                            vscode.window.showInformationMessage('Setting build options');
+                            console.log(message.text);
+                            break;
+                        default:
+                            vscode.window.showErrorMessage('Invalid message received from build opts view');
+                    }
+                });
+                break;
             case "config":
                 webviewView.webview.onDidReceiveMessage(async message => {
                     switch (message.command) {
@@ -189,6 +230,7 @@ class DashwaveView implements vscode.WebviewViewProvider {
                             vscode.window.showErrorMessage('Invalid message received from create project view');
                     }
                 });
+                break;
             case "login":
                 webviewView.webview.onDidReceiveMessage(async message => {
                     switch(message.command){
@@ -200,6 +242,24 @@ class DashwaveView implements vscode.WebviewViewProvider {
                             vscode.window.showErrorMessage(`Invalid message received from login view: ${message.command}`);
                     }
                 });
+                break;
+            case "users":
+                webviewView.webview.onDidReceiveMessage(async message => {
+                    switch(message.command){
+                        case "addNewUser":
+                            loginUser(projectRootDir, outputChannel);
+                            break;
+                        case "updateUser":
+                            const user = message.text;
+                            vscode.window.showInformationMessage(`Switching to user ${user}`);
+                            await switchUser(projectRootDir, outputChannel, user);
+                            break;
+                        default:
+                            vscode.window.showErrorMessage(`Invalid message received from users view: ${message.command}`);
+                    }
+                });
+                setUsers(availableUsers);
+                setSelectedUser(selectedUser);
                 break;
         }
     }
@@ -232,6 +292,26 @@ class DashwaveView implements vscode.WebviewViewProvider {
         }
         if(this.webv){
             this.webv.webview.postMessage({command:"disableBuild"});
+        }
+    }
+
+    public setUsers(users:string[]){
+        if(this._viewType !== "users"){
+            vscode.window.showErrorMessage('Invalid view type for setting users');
+            return;
+        }
+        if(this.webv){
+            this.webv.webview.postMessage({command:"setUsers", users:users, disabled:getPluginMode() === "workspace"});
+        }
+    }
+
+    public setSelectedUser(user:string){
+        if(this._viewType !== "users"){
+            vscode.window.showErrorMessage('Invalid view type for setting selected user');
+            return;
+        }
+        if(this.webv){
+            this.webv.webview.postMessage({command:"setSelectedUser", user:user});
         }
     }
 
@@ -274,6 +354,27 @@ class DashwaveView implements vscode.WebviewViewProvider {
                         <script src="${scriptUri}"></script>
                     </body>
                     </html>`;
+            case "buildOpts":
+                return `<!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <link href="${styleMainUri}" rel="stylesheet">
+                        <title>Build Opts</title>
+                    </head>
+                    <body>
+                        <div class="config-div">
+                            <div class="config-text">Build Opts</div>
+                                <select class="config-select" name="build-opts" id="build-opts-selector" multiple>
+                                <option value="clean-build">Clean Build</option>
+                                <option value="verbose">Verbose</option>
+                                </select>
+                            </div>
+                        </div>
+                        <script src="${scriptUri}"></script>
+                    </body>
+                    </html>`;    
             case "config":
                 return `<!DOCTYPE html>
                     <html lang="en">
@@ -318,6 +419,23 @@ class DashwaveView implements vscode.WebviewViewProvider {
                     </body>
                     </html>`;
             case "login":
+                if (getPluginMode() === "workspace"){
+                    return `<!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <link href="${styleMainUri}" rel="stylesheet">
+                        <title>Login</title>
+                    </head>
+                    <body>
+                        <div class="action-div">
+                            <div class="action-text">Login User to Dashwave</div>
+                            <button class="action-btn" id="login-user" disabled>Logging in Automatically...</button>
+                        </div>
+                    </body>
+                    </html>`;    
+                } 
                 return `<!DOCTYPE html>
                     <html lang="en">
                     <head>
@@ -334,6 +452,32 @@ class DashwaveView implements vscode.WebviewViewProvider {
                         <script src="${scriptUri}"></script>
                     </body>
                     </html>`;
+            case "users":
+                let overrideDisable = "";
+                if(getPluginMode() === "workspace"){
+                    overrideDisable = "disabled";
+                }
+                console.log(scriptUri);
+                return `<!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <link href="${styleMainUri}" rel="stylesheet">
+                    <title>Configuration Opts</title>
+                </head>
+                <body>
+                    <div class="config-div md-1">
+                            <select class="config-select" name="user" id="user-selector" ${overrideDisable}>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="action-div">
+                            <button class="action-btn" id="add-new-user" ${overrideDisable}>Add new user</button>
+                        </div>
+                    <script src="${scriptUri}"></script>
+                </body>
+                </html>`;
             default:
                 return `<!DOCTYPE html>
                     <html lang="en">
