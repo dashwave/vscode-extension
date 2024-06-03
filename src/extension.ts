@@ -18,6 +18,11 @@ var outputChannel:OutputConsole;
 var projectRootDir:string = "";
 var availableUsers:string[] = [];
 var selectedUser:string = "";
+
+// build opts
+var cleanBuild:boolean = false;
+var verbose:boolean = false;
+
 export async function activate(context: vscode.ExtensionContext) {
 
   outputChannel =  new OutputConsole();  
@@ -174,17 +179,17 @@ class DashwaveView implements vscode.WebviewViewProvider {
                                 message.then(() => {}, () => {});
                             }, 2000);
                             // Run the build command
-                            await runBuild(projectRootDir, outputChannel, false, false, false, selectedModule, selectedVariant, false);
+                            await runBuild(projectRootDir, outputChannel, cleanBuild, verbose, false, selectedModule, selectedVariant, false);
                             break;
                         case "runBuildAndEmulation":
                             vscode.window.showInformationMessage('Running build and emulate command');
                             // Run the build and emulate command
-                            await runBuild(projectRootDir, outputChannel, false, false, true, selectedModule, selectedVariant, false);
+                            await runBuild(projectRootDir, outputChannel, cleanBuild, verbose, true, selectedModule, selectedVariant, false);
                             break;
                         case "runDebugger":
                             vscode.window.showInformationMessage('Running debugger command');
                             // Run the debugger command
-                            await runBuild(projectRootDir, outputChannel, false, false, false, selectedModule, selectedVariant, true);
+                            await runBuild(projectRootDir, outputChannel, cleanBuild, verbose, false, selectedModule, selectedVariant, true);
                             break;
                         default:
                             vscode.window.showErrorMessage('Invalid message received from build view');
@@ -194,9 +199,11 @@ class DashwaveView implements vscode.WebviewViewProvider {
             case "buildOpts":
                 webviewView.webview.onDidReceiveMessage(async message => {
                     switch(message.command){
-                        case "updateBuildOpts":
-                            vscode.window.showInformationMessage('Setting build options');
-                            console.log(message.text);
+                        case "updateCleanBuild":
+                            cleanBuild = message.checked;
+                            break;
+                        case "updateVerbose":
+                            verbose = message.checked;
                             break;
                         default:
                             vscode.window.showErrorMessage('Invalid message received from build opts view');
@@ -330,6 +337,13 @@ class DashwaveView implements vscode.WebviewViewProvider {
                 if(!buildEnabled){
                     buildButtonDisabled = "disabled";
                 }
+                let emulationOption = "";
+                if (getPluginMode() !== "workspace"){
+                    emulationOption = `<div class="action-div">
+                    <div class="action-text">Builds your app on dashwave cloud and opens an emulation right here</div>
+                    <button class="action-btn" id="run-build-and-emulation" ${buildButtonDisabled}>Build and Emulate</button>
+                </div>`;
+                }
                 return `<!DOCTYPE html>
                     <html lang="en">
                     <head>
@@ -343,10 +357,7 @@ class DashwaveView implements vscode.WebviewViewProvider {
                             <div class="action-text">Builds your app on dashwave cloud</div>
                             <button class="action-btn" id="run-build" ${buildButtonDisabled}>Run dashwave build</button>
                         </div>
-                        <div class="action-div">
-                            <div class="action-text">Builds your app on dashwave cloud and opens an emulation right here</div>
-                            <button class="action-btn" id="run-build-and-emulation" ${buildButtonDisabled}>Build and Emulate</button>
-                        </div>
+                        ${emulationOption}
                         <div class="action-div">
                             <div class="action-text">Debug your code with dashwave debugger</div>
                             <button class="action-btn" id="run-debugger" ${buildButtonDisabled}>Run Dashwave Debugger</button>
@@ -364,12 +375,21 @@ class DashwaveView implements vscode.WebviewViewProvider {
                         <title>Build Opts</title>
                     </head>
                     <body>
-                        <div class="config-div">
-                            <div class="config-text">Build Opts</div>
-                                <select class="config-select" name="build-opts" id="build-opts-selector" multiple>
-                                <option value="clean-build">Clean Build</option>
-                                <option value="verbose">Verbose</option>
-                                </select>
+                        <div class="build-opts-div">
+                            <ul class="build-opts-list">
+                            <li>
+                                <label>
+                                    <input type="checkbox" name="buildOptions" value="cleanBuild" id="clean-build"
+                                    /> Clean build
+                                </label>
+                            </li>
+                            <li>
+                                <label>
+                                    <input type="checkbox" name="buildOptions" value="verbose" id="verbose"
+                                    /> Verbose
+                                </label>
+                            </li>
+                        </ul>
                             </div>
                         </div>
                         <script src="${scriptUri}"></script>

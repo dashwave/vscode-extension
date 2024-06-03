@@ -145,3 +145,57 @@
 .md-1 {
     margin-bottom: 1rem;
 }
+
+.build-opts-list {
+    list-style-type: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-left: 0;
+    padding-left: 0;
+}
+
+.build-opts-div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.build-opts-list li {
+    display: flex;
+    margin-bottom: 0.5rem;
+}
+
+input[type="checkbox"] {
+    appearance: none;
+    background-color: none;
+    border: 1px solid #92989E;
+    border-radius: 3px;
+    width: 1rem;
+    height: 1rem;
+    display: flex;
+}
+
+input[type="checkbox"]:checked {
+    border-color: #2CACE8;
+    /* border: none; */
+}
+
+input[type="checkbox"]:checked::before {
+    content: '';
+    background-color: #2CACE8;
+    width: .5rem;
+    height: .5rem;
+    border-radius: 50%;
+    margin: auto;
+}
+
+label {
+    display: flex;
+    align-items: center;
+}
+
+label span {
+    display: flex;
+    margin-left: 1rem;
+}
