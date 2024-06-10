@@ -83,6 +83,16 @@ export async function activate(context: vscode.ExtensionContext) {
   vscode.window.registerWebviewViewProvider("dashwaveUsersView", usersView);
   vscode.commands.executeCommand('setContext', 'dashwave:userLoggedIn', false);
 
+  vscode.commands.registerCommand('dashwave.build', async () => { 
+    runBuildCmd();
+  });
+  vscode.commands.registerCommand('dashwave.buildAndEmulation', async () => {
+    runBuildAndEmulationCmd();
+  });
+  vscode.commands.registerCommand('dashwave.debug', async () => {
+    runDebuggerCmd();
+  });
+
   loadConfiguration();
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(event => {
@@ -174,22 +184,13 @@ class DashwaveView implements vscode.WebviewViewProvider {
                 webviewView.webview.onDidReceiveMessage(async message => {
                     switch(message.command){
                         case "runBuild":
-                            const message = vscode.window.showInformationMessage('Running build command');
-                            setTimeout(()=>{
-                                message.then(() => {}, () => {});
-                            }, 2000);
-                            // Run the build command
-                            await runBuild(projectRootDir, outputChannel, cleanBuild, verbose, false, selectedModule, selectedVariant, false);
+                            await vscode.commands.executeCommand('dashwave.build');
                             break;
                         case "runBuildAndEmulation":
-                            vscode.window.showInformationMessage('Running build and emulate command');
-                            // Run the build and emulate command
-                            await runBuild(projectRootDir, outputChannel, cleanBuild, verbose, true, selectedModule, selectedVariant, false);
+                            await vscode.commands.executeCommand('dashwave.buildAndEmulation');
                             break;
                         case "runDebugger":
-                            vscode.window.showInformationMessage('Running debugger command');
-                            // Run the debugger command
-                            await runBuild(projectRootDir, outputChannel, cleanBuild, verbose, false, selectedModule, selectedVariant, true);
+                            await vscode.commands.executeCommand('dashwave.debug');
                             break;
                         default:
                             vscode.window.showErrorMessage('Invalid message received from build view');
@@ -562,4 +563,31 @@ function getCreateProjectWebViewHTML(extensionUri: vscode.Uri, webview: vscode.W
             <script src="${scriptUri}"></script>
         </body>
         </html>`;
-    }
+}
+
+async function runBuildCmd(){
+    const message = vscode.window.showInformationMessage('Running build command');
+    setTimeout(()=>{
+        message.then(() => {}, () => {});
+    }, 2000);
+    // Run the build command
+    await runBuild(projectRootDir, outputChannel, cleanBuild, verbose, false, selectedModule, selectedVariant, false);
+}
+
+async function runBuildAndEmulationCmd(){
+    const message = vscode.window.showInformationMessage('Running build and emulation command');
+    setTimeout(()=>{
+        message.then(() => {}, () => {});
+    }, 2000);
+    // Run the build command
+    await runBuild(projectRootDir, outputChannel, cleanBuild, verbose, true, selectedModule, selectedVariant, false);
+}
+
+async function runDebuggerCmd(){
+    const message = vscode.window.showInformationMessage('Running debugger command');
+    setTimeout(()=>{
+        message.then(() => {}, () => {});
+    }, 2000);
+    // Run the build command
+    await runBuild(projectRootDir, outputChannel, cleanBuild, verbose, false, selectedModule, selectedVariant, true);
+}

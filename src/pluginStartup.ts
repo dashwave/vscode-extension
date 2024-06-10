@@ -266,7 +266,7 @@ export async function createProject(pwd:string,projectName:string,devStack:strin
         checkProjectConnected(pwd, dwOutput);
     } else if (exitCode === 13){
         vscode.commands.executeCommand('setContext', 'dashwave:userLoggedIn', true);
-        vscode.window.showErrorMessage("Please login again")
+        vscode.window.showErrorMessage("Please login again");
     }else{
         dwOutput.displayError(Messages.DW_PROJECT_CREATE_FAILED);
         vscode.window.showErrorMessage("Project creation failed. Please try again")

@@ -19,6 +19,25 @@
     ],
     "main": "./dist/extension.js",
     "contributes": {
+        "menus": {
+            "editor/title": [
+                {
+                    "command": "dashwave.build",
+                    "when": "dashwave:userLoggedIn && dashwave:projectConnected",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "dashwave.buildAndEmulation",
+                    "when": "dashwave:userLoggedIn && dashwave:projectConnected",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "dashwave.debug",
+                    "when": "dashwave:userLoggedIn && dashwave:projectConnected",
+                    "group": "navigation@3"
+                }
+            ]
+        },
         "configuration":{
             "type": "object",
             "title": "Dashwave Cloud Build Settings",
@@ -37,16 +56,34 @@
         },
         "commands": [
             {
-                "command": "extension.runDashwaveBuild",
-                "title": "Run Dashwave Build"
+                "command": "dashwave.build",
+                "title": "Run Dashwave Build",
+                "category": "Dashwave Cloud Build",
+                "shortTitle": "Build",
+                "icon": {
+                    "light": "src/assets/build.png",
+                    "dark": "src/assets/build.png"
+                }
             },
             {
-                "command": "extension.buildAndEmulate",
-                "title": "Build and Emulate"
+                "command": "dashwave.buildAndEmulation",
+                "title": "Build and Emulate",
+                "category": "Dashwave Cloud Build",
+                "shortTitle": "Build and Emulate",
+                "icon": {
+                    "light": "src/assets/emulate.png",
+                    "dark": "src/assets/emulate.png"
+                }
             },
             {
-                "command": "extension.debug",
-                "title": "Debug"
+                "command": "dashwave.debug",
+                "title": "Debug",
+                "category": "Dashwave Cloud Build",
+                "shortTitle": "Debug",
+                "icon": {
+                    "light": "src/assets/debug.png",
+                    "dark": "src/assets/debug.png"
+                }
             }
         ],
         "viewsContainers": {
